@@ -32,24 +32,35 @@ def fetch_content_generic(html):
 
 
 def main():
+    # Zorg dat outputmap bestaat
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     with open(INPUT_CSV, newline='', encoding='utf-8') as csvfile, \
          open(OUTPUT_FILE, 'w', encoding='utf-8') as jsonlfile:
         reader = csv.DictReader(csvfile)
+
         for row in reader:
             url = row.get('url', '')
             source = row.get('source', '').upper()
-            # Filter non-article URLs for Telegraaf
-            if source == 'TELEGRAAF' and '/nieuws/' not in url:
-                continue
+
+                        # Filter alleen Telegraaf nieuwsartikelen (vink subdomeinen uit)
+            if source == 'TELEGRAAF':
+                from urllib.parse import urlparse
+                parsed = urlparse(url)
+                # Alleen artikelen op de hoofddomein path '/nieuws/'
+                if parsed.netloc not in ('www.telegraaf.nl', 'telegraaf.nl') or not parsed.path.startswith('/nieuws/'):
+                    continue
+
             try:
                 resp = requests.get(url)
                 resp.raise_for_status()
                 html = resp.text
+
                 if source == 'NOS':
                     title, lead, body, author, tags = fetch_content_nos(html)
                 else:
                     title, lead, body, author, tags = fetch_content_generic(html)
+
                 entry = {
                     **row,
                     'title': title,
@@ -58,11 +69,11 @@ def main():
                     'author': author,
                     'tags': tags
                 }
-                jsonlfile.write(json.dumps(entry, ensure_ascii=False) + '
-')
+                jsonlfile.write(json.dumps(entry, ensure_ascii=False) + '\n')
+
             except Exception as e:
                 print(f"Error fetching content for {url}: {e}")
 
+
 if __name__ == '__main__':
-    main()
     main()
