@@ -14,25 +14,28 @@ OUTPUT_DIR = BASE_DIR / "discovery" / "output"
 def fetch_rss(source_name, url):
     """
     Haal artikelen uit een RSS-feed met feedparser.
-    Retourneert een lijst van dicts met source, url, date_found, date_published.
+    Retourneert een lijst van dicts met source, url, date_found, date_published, time_published.
     """
     feed = feedparser.parse(url)
     articles = []
     for entry in feed.entries:
         link = entry.link
-        # feedparser zet published datum in .published
         date_published = ''
+        time_published = ''
         if 'published_parsed' in entry and entry.published_parsed:
-            date_published = datetime.date(
-                entry.published_parsed.tm_year,
-                entry.published_parsed.tm_mon,
-                entry.published_parsed.tm_mday
-            ).isoformat()
+            t = entry.published_parsed
+            dt = datetime.datetime(
+                t.tm_year, t.tm_mon, t.tm_mday,
+                t.tm_hour, t.tm_min, t.tm_sec
+            )
+            iso = dt.isoformat()
+            date_published, time_published = iso.split('T')
         articles.append({
             'source': source_name,
             'url': link,
             'date_found': datetime.date.today().isoformat(),
-            'date_published': date_published
+            'date_published': date_published,
+            'time_published': time_published
         })
     return articles
 
@@ -47,7 +50,6 @@ def fetch_html(source_name, url):
     soup = BeautifulSoup(resp.text, 'html.parser')
     articles = []
     today = datetime.date.today().isoformat()
-    # Voorbeeldselector; update per bron
     for a in soup.select('a'):
         link = a.get('href')
         if link and link.startswith('http'):
@@ -55,7 +57,8 @@ def fetch_html(source_name, url):
                 'source': source_name,
                 'url': link,
                 'date_found': today,
-                'date_published': ''  # geen publicatiedatum op overzichtspagina
+                'date_published': '',  # geen datum beschikbaar
+                'time_published': ''    # geen tijd beschikbaar
             })
     return articles
 
@@ -85,9 +88,12 @@ def main():
             except Exception as e:
                 print(f"Fout bij ophalen {source} ({url}): {e}")
 
-    # Schrijf CSV
+    # Schrijf CSV met extra kolom voor tijd
     with open(output_file, 'w', newline='', encoding='utf-8') as out_file:
-        writer = csv.DictWriter(out_file, fieldnames=['source', 'url', 'date_found', 'date_published'])
+        writer = csv.DictWriter(
+            out_file,
+            fieldnames=['source', 'url', 'date_found', 'date_published', 'time_published']
+        )
         writer.writeheader()
         for art in all_articles:
             writer.writerow(art)
