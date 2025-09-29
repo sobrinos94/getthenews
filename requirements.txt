@@ -1,4 +1,6 @@
-requests
 beautifulsoup4
 feedparser
 lxml
+lxml[html_clean]
+requests
+requests-html
