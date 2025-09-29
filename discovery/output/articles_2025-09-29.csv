@@ -1,0 +1,40 @@
+name: Daily Discovery
+
+on:
+  schedule:
+    # elke dag om 07:00 Amsterdam
+    - cron:  '0 5 * * *'   # 05:00 UTC = 07:00 CEST
+  workflow_dispatch:       # handmatige trigger
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # nodig voor commits later
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+        # als je pure bash gebruikt kun je deze stap weglaten
+
+      - name: Run discovery script
+        run: |
+          # voorbeeld: Python-script dat discovery/sources.csv inleest,
+          # RSS + HTML afloopt en output wegschrijft naar discovery/output/
+          python scripts/run_discovery.py
+
+      - name: Commit & Push new articles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add discovery/output/articles_*.csv
+          git commit -m "chore: daily discovery $(date +'%Y-%m-%d')" || echo "No changes to commit"
+          git push
