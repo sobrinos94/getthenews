@@ -38,12 +38,15 @@ def main():
         reader = csv.DictReader(csvfile)
         for row in reader:
             url = row.get('url', '')
-            source = row.get('source', '')
+            source = row.get('source', '').upper()
+            # Filter non-article URLs for Telegraaf
+            if source == 'TELEGRAAF' and '/nieuws/' not in url:
+                continue
             try:
                 resp = requests.get(url)
                 resp.raise_for_status()
                 html = resp.text
-                if source.upper() == 'NOS':
+                if source == 'NOS':
                     title, lead, body, author, tags = fetch_content_nos(html)
                 else:
                     title, lead, body, author, tags = fetch_content_generic(html)
@@ -55,9 +58,11 @@ def main():
                     'author': author,
                     'tags': tags
                 }
-                jsonlfile.write(json.dumps(entry, ensure_ascii=False) + '\n')
+                jsonlfile.write(json.dumps(entry, ensure_ascii=False) + '
+')
             except Exception as e:
                 print(f"Error fetching content for {url}: {e}")
 
 if __name__ == '__main__':
+    main()
     main()
